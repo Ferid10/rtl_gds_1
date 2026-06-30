@@ -1,0 +1,170 @@
+i copy pasted my logs into chatgpt and told it to extract the commands 
+so there might be some mistakes  ( i used these commands in openroad )
+##############################
+# 1. Load Technology
+##############################
+
+read_lef sky130_fd_sc_hd.tlef
+read_lef sky130_fd_sc_hd.lef
+
+read_liberty sky130_fd_sc_hd__tt_025C_1v80.lib
+
+##############################
+# 2. Load Design
+##############################
+
+read_verilog top_module.v
+link_design top_module
+
+##############################
+# 3. Constraints
+##############################
+
+read_sdc constraints.sdc
+
+##############################
+# 4. Floorplan
+##############################
+
+initialize_floorplan \
+    -site unithd \
+    -die_area {0 0 486.55 486.55} \
+    -core_area {20 20 466.55 466.55}
+
+##############################
+# 5. Routing Tracks
+##############################
+
+make_tracks
+
+##############################
+# 6. IO Pins
+##############################
+
+place_pins \
+    -hor_layers met3 \
+    -ver_layers met2
+
+##############################
+# 7. Tapcells / Endcaps
+##############################
+
+tapcell \
+    -tapcell_master sky130_fd_sc_hd__tapvpwrvgnd_1 \
+    -distance 14
+
+##############################
+# 8. Power Connections
+##############################
+
+add_global_connection \
+    -net VPWR \
+    -pin_pattern VPWR \
+    -power
+
+add_global_connection \
+    -net VGND \
+    -pin_pattern VGND \
+    -ground
+
+global_connect
+
+##############################
+# 9. Voltage Domain
+##############################
+
+set_voltage_domain \
+    -name CORE \
+    -power VPWR \
+    -ground VGND
+
+##############################
+# 10. PDN Definition
+##############################
+
+define_pdn_grid \
+    -name core_grid \
+    -voltage_domains CORE
+
+add_pdn_connect \
+    -grid core_grid \
+    -layers {met1 met4}
+
+add_pdn_ring \
+    -grid core_grid \
+    -layers {met4 met5} \
+    -widths {2.0 2.0} \
+    -spacings {2.0 2.0} \
+    -core_offsets {5.0 5.0}
+
+add_pdn_stripe \
+    -grid core_grid \
+    -layer met4 \
+    -width 1.6 \
+    -pitch 40 \
+    -offset 20
+
+add_pdn_stripe \
+    -grid core_grid \
+    -layer met5 \
+    -width 1.6 \
+    -pitch 40 \
+    -offset 20
+
+pdngen
+
+##############################
+# 11. Global Placement
+##############################
+
+set_global_routing_layer_adjustment met1 0.5
+set_global_routing_layer_adjustment met2 0.5
+set_global_routing_layer_adjustment met3 0.5
+set_global_routing_layer_adjustment met4 0.5
+set_global_routing_layer_adjustment met5 0.5
+
+set_routing_layers \
+    -signal {met1-met5} \
+    -clock {met3-met5}
+
+set_macro_extension 2
+
+global_placement \
+    -routability_driven \
+    -density 0.60
+
+##############################
+# 12. Detailed Placement
+##############################
+
+detailed_placement
+
+optimize_mirroring
+
+check_placement
+
+##############################
+# 13. Global Routing
+##############################
+
+global_route
+
+##############################
+# 14. Detailed Routing
+##############################
+
+detailed_route
+
+##############################
+# 15. Reports
+##############################
+
+report_design_area
+
+report_checks
+
+report_power
+
+report_tns
+
+report_wns
